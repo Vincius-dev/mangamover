@@ -145,6 +145,7 @@
             <input type="checkbox" class="form-check-input" id="job-active" checked>
             <label class="form-check-label" for="job-active">Ativo</label>
           </div>
+          <div id="modal-error" class="alert alert-danger mt-3 d-none"></div>
         </form>
       </div>
       <div class="modal-footer">
@@ -224,6 +225,7 @@
   function openModal(id) {
     document.getElementById('job-form').reset();
     document.getElementById('job-id').value = '';
+    document.getElementById('modal-error').classList.add('d-none');
     document.getElementById('modal-title').textContent = 'Novo Job';
 
     if (id != null) {
@@ -259,7 +261,10 @@
         modal.hide();
         await refresh();
       } else {
-        alert('Erro ao salvar job: ' + res.status);
+        const err = await res.json().catch(() => ({}));
+        const errEl = document.getElementById('modal-error');
+        errEl.textContent = err.error || ('Erro ao salvar job: ' + res.status);
+        errEl.classList.remove('d-none');
       }
     } catch (e) { alert('Erro: ' + e.message); }
   }
