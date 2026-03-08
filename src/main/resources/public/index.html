@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MangaMover</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    body { background: #f8f9fa; }
+    .stat-card { min-width: 120px; }
+    .badge-OK { background-color: #198754; }
+    .badge-ERROR { background-color: #dc3545; }
+    td { vertical-align: middle; }
+    .text-truncate-path { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark mb-4">
+  <div class="container">
+    <span class="navbar-brand fw-bold">MangaMover</span>
+    <span class="text-secondary small" id="last-refresh"></span>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="row g-3 mb-4" id="stats-row">
+    <div class="col-auto">
+      <div class="card stat-card text-center p-3">
+        <div class="fs-2 fw-bold text-primary" id="stat-jobs">—</div>
+        <div class="text-muted small">Jobs</div>
+      </div>
+    </div>
+    <div class="col-auto">
+      <div class="card stat-card text-center p-3">
+        <div class="fs-2 fw-bold text-success" id="stat-watchers">—</div>
+        <div class="text-muted small">Watchers ativos</div>
+      </div>
+    </div>
+    <div class="col-auto">
+      <div class="card stat-card text-center p-3">
+        <div class="fs-2 fw-bold text-info" id="stat-moves">—</div>
+        <div class="text-muted small">Arquivos movidos</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jobs -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">Jobs</span>
+      <button class="btn btn-primary btn-sm" onclick="openModal(null)">
+        <i class="bi bi-plus-lg"></i> Novo Job
+      </button>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Nome</th>
+              <th>Origem</th>
+              <th>Destino</th>
+              <th>Watch</th>
+              <th>Ativo</th>
+              <th>Watcher</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="jobs-body">
+            <tr><td colspan="8" class="text-center text-muted py-3">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">Histórico</span>
+      <select id="hist-job-filter" class="form-select form-select-sm w-auto" onchange="loadHistory(1)">
+        <option value="">Todos os jobs</option>
+      </select>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Job</th>
+              <th>Arquivo</th>
+              <th>Status</th>
+              <th>Mensagem</th>
+              <th>Data</th>
+            </tr>
+          </thead>
+          <tbody id="history-body">
+            <tr><td colspan="6" class="text-center text-muted py-3">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center">
+      <span class="text-muted small" id="history-info"></span>
+      <nav><ul class="pagination pagination-sm mb-0" id="history-pagination"></ul></nav>
+    </div>
+  </div>
+
+</div>
+
+<!-- Job Modal -->
+<div class="modal fade" id="jobModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-title">Novo Job</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="job-form">
+          <input type="hidden" id="job-id">
+          <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" class="form-control" id="job-name" required placeholder="Ex: Suwayomi → Kavita">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Pasta de origem</label>
+            <input type="text" class="form-control" id="job-source" required placeholder="/manga/source">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Pasta de destino</label>
+            <input type="text" class="form-control" id="job-dest" required placeholder="/manga/dest">
+          </div>
+          <div class="form-check mb-2">
+            <input type="checkbox" class="form-check-input" id="job-watch" checked>
+            <label class="form-check-label" for="job-watch">Monitorar automaticamente (WatchService)</label>
+          </div>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="job-active" checked>
+            <label class="form-check-label" for="job-active">Ativo</label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="saveJob()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  const modal = new bootstrap.Modal(document.getElementById('jobModal'));
+  let jobsCache = [];
+  let histPage = 1;
+
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  async function loadStats() {
+    try {
+      const s = await fetch('/api/stats').then(r => r.json());
+      document.getElementById('stat-jobs').textContent = s.total_jobs;
+      document.getElementById('stat-watchers').textContent = s.active_watchers;
+      document.getElementById('stat-moves').textContent = s.total_moves;
+      document.getElementById('last-refresh').textContent =
+        'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
+    } catch (e) { console.error('Stats error', e); }
+  }
+
+  // ── Jobs ───────────────────────────────────────────────────────────────────
+  async function loadJobs() {
+    try {
+      const jobs = await fetch('/api/jobs').then(r => r.json());
+      jobsCache = jobs;
+      renderJobs(jobs);
+      updateHistFilter(jobs);
+    } catch (e) { console.error('Jobs error', e); }
+  }
+
+  function renderJobs(jobs) {
+    const tbody = document.getElementById('jobs-body');
+    if (!jobs.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">Nenhum job cadastrado</td></tr>';
+      return;
+    }
+    tbody.innerHTML = jobs.map(j => `
+      <tr>
+        <td>${j.id}</td>
+        <td>${esc(j.name)}</td>
+        <td><span class="text-truncate-path d-inline-block" title="${esc(j.source_path)}">${esc(j.source_path)}</span></td>
+        <td><span class="text-truncate-path d-inline-block" title="${esc(j.dest_path)}">${esc(j.dest_path)}</span></td>
+        <td>${j.watch ? '<i class="bi bi-eye text-primary"></i>' : '<i class="bi bi-eye-slash text-muted"></i>'}</td>
+        <td>${j.active ? '<span class="badge bg-success">Sim</span>' : '<span class="badge bg-secondary">Não</span>'}</td>
+        <td id="watcher-${j.id}"><span class="badge bg-secondary">—</span></td>
+        <td>
+          <button class="btn btn-outline-secondary btn-sm me-1" onclick="openModal(${j.id})" title="Editar">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-outline-success btn-sm me-1" onclick="runJob(${j.id})" title="Executar agora">
+            <i class="bi bi-play-fill"></i>
+          </button>
+          <button class="btn btn-outline-danger btn-sm" onclick="deleteJob(${j.id})" title="Remover">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function updateHistFilter(jobs) {
+    const sel = document.getElementById('hist-job-filter');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Todos os jobs</option>' +
+      jobs.map(j => `<option value="${j.id}" ${current == j.id ? 'selected' : ''}>${esc(j.name)}</option>`).join('');
+  }
+
+  // ── Job Modal ──────────────────────────────────────────────────────────────
+  function openModal(id) {
+    document.getElementById('job-form').reset();
+    document.getElementById('job-id').value = '';
+    document.getElementById('modal-title').textContent = 'Novo Job';
+
+    if (id != null) {
+      const j = jobsCache.find(x => x.id === id);
+      if (!j) return;
+      document.getElementById('modal-title').textContent = 'Editar Job';
+      document.getElementById('job-id').value = j.id;
+      document.getElementById('job-name').value = j.name;
+      document.getElementById('job-source').value = j.source_path;
+      document.getElementById('job-dest').value = j.dest_path;
+      document.getElementById('job-watch').checked = j.watch;
+      document.getElementById('job-active').checked = j.active;
+    }
+    modal.show();
+  }
+
+  async function saveJob() {
+    const id = document.getElementById('job-id').value;
+    const body = {
+      name: document.getElementById('job-name').value.trim(),
+      source_path: document.getElementById('job-source').value.trim(),
+      dest_path: document.getElementById('job-dest').value.trim(),
+      watch: document.getElementById('job-watch').checked,
+      active: document.getElementById('job-active').checked,
+    };
+    if (!body.name || !body.source_path || !body.dest_path) return;
+
+    try {
+      const url = id ? `/api/jobs/${id}` : '/api/jobs';
+      const method = id ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (res.ok) {
+        modal.hide();
+        await refresh();
+      } else {
+        alert('Erro ao salvar job: ' + res.status);
+      }
+    } catch (e) { alert('Erro: ' + e.message); }
+  }
+
+  async function deleteJob(id) {
+    const job = jobsCache.find(j => j.id === id);
+    if (!confirm(`Remover job "${job?.name || id}"?`)) return;
+    try {
+      const res = await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
+      if (res.ok || res.status === 204) await refresh();
+      else alert('Erro ao remover: ' + res.status);
+    } catch (e) { alert('Erro: ' + e.message); }
+  }
+
+  async function runJob(id) {
+    try {
+      const res = await fetch(`/api/jobs/${id}/run`, { method: 'POST' });
+      if (res.status === 202) {
+        const d = await res.json();
+        showToast(d.message || 'Job iniciado!', 'success');
+        setTimeout(() => { loadStats(); loadHistory(histPage); }, 2000);
+      } else {
+        alert('Erro: ' + res.status);
+      }
+    } catch (e) { alert('Erro: ' + e.message); }
+  }
+
+  // ── History ────────────────────────────────────────────────────────────────
+  async function loadHistory(page) {
+    histPage = page;
+    const jobId = document.getElementById('hist-job-filter').value;
+    const params = new URLSearchParams({ page, per_page: 20 });
+    if (jobId) params.set('job_id', jobId);
+    try {
+      const d = await fetch('/api/history?' + params).then(r => r.json());
+      renderHistory(d);
+    } catch (e) { console.error('History error', e); }
+  }
+
+  function renderHistory(d) {
+    const tbody = document.getElementById('history-body');
+    if (!d.data.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Sem registros</td></tr>';
+    } else {
+      tbody.innerHTML = d.data.map(e => {
+        const job = jobsCache.find(j => j.id === e.job_id);
+        return `
+          <tr>
+            <td>${e.id}</td>
+            <td>${job ? esc(job.name) : e.job_id}</td>
+            <td>${esc(e.filename)}</td>
+            <td><span class="badge badge-${e.status}">${e.status}</span></td>
+            <td class="text-muted small">${e.message ? esc(e.message) : ''}</td>
+            <td class="text-muted small">${e.created_at || ''}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    const perPage = d.per_page;
+    const totalPages = Math.max(1, Math.ceil(d.total / perPage));
+    document.getElementById('history-info').textContent =
+      `${d.total} registros · Página ${d.page} de ${totalPages}`;
+
+    const pag = document.getElementById('history-pagination');
+    pag.innerHTML = '';
+    if (totalPages <= 1) return;
+
+    const mkLi = (label, page, disabled, active) => {
+      const li = document.createElement('li');
+      li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+      li.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault();loadHistory(${page})">${label}</a>`;
+      return li;
+    };
+
+    pag.appendChild(mkLi('‹', d.page - 1, d.page <= 1, false));
+    const start = Math.max(1, d.page - 2);
+    const end = Math.min(totalPages, d.page + 2);
+    for (let p = start; p <= end; p++) pag.appendChild(mkLi(p, p, false, p === d.page));
+    pag.appendChild(mkLi('›', d.page + 1, d.page >= totalPages, false));
+  }
+
+  // ── Toast ──────────────────────────────────────────────────────────────────
+  function showToast(msg, type) {
+    const el = document.createElement('div');
+    el.className = `alert alert-${type} position-fixed bottom-0 end-0 m-3`;
+    el.style.zIndex = 9999;
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+
+  function esc(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  async function refresh() {
+    await Promise.all([loadStats(), loadJobs()]);
+    await loadHistory(histPage);
+  }
+
+  refresh();
+  setInterval(refresh, 30000);
+</script>
+</body>
+</html>

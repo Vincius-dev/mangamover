@@ -1,0 +1,20 @@
+services:
+  mangamover:
+    build: .
+    container_name: mangamover
+    ports:
+      - "${PORT:-8765}:8765"
+    environment:
+      - PORT=8765
+      - DB_PATH=/data/manga_mover.db
+      - LOG_LEVEL=INFO
+    volumes:
+      - mangamover_data:/data
+      # Uncomment and adjust to your manga folders:
+      # - /path/to/suwayomi/downloads:/manga/source:ro
+      # - /path/to/kavita/library:/manga/dest
+    mem_limit: 200m
+    restart: unless-stopped
+
+volumes:
+  mangamover_data:
