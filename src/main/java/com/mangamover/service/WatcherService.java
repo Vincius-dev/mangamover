@@ -12,24 +12,30 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WatcherService {
     private static final Logger log = LoggerFactory.getLogger(WatcherService.class);
     private final FileMoverService fileMoverService;
+    private final LogStore logStore;
     private final Map<Long, Thread> watchers = new ConcurrentHashMap<>();
 
-    public WatcherService(FileMoverService fileMoverService) {
+    public WatcherService(FileMoverService fileMoverService, LogStore logStore) {
         this.fileMoverService = fileMoverService;
+        this.logStore = logStore;
     }
 
     public void start(Job job) {
         stop(job.id);
         Thread t = Thread.ofVirtual().name("watcher-" + job.id).start(() -> watch(job));
         watchers.put(job.id, t);
-        log.info("[Job {}] Watcher started: {}", job.id, job.sourcePath);
+        String msg = "[Job " + job.id + "] Watcher iniciado: " + job.sourcePath;
+        log.info(msg);
+        logStore.info("watcher", msg);
     }
 
     public void stop(long jobId) {
         Thread t = watchers.remove(jobId);
         if (t != null) {
             t.interrupt();
-            log.info("[Job {}] Watcher stopped", jobId);
+            String msg = "[Job " + jobId + "] Watcher parado";
+            log.info(msg);
+            logStore.info("watcher", msg);
         }
     }
 
@@ -50,7 +56,9 @@ public class WatcherService {
         try {
             Files.createDirectories(source);
         } catch (IOException e) {
-            log.error("[Job {}] Cannot create source dir: {}", job.id, e.getMessage());
+            String msg = "[Job " + job.id + "] Não foi possível criar pasta de origem: " + e.getMessage();
+            log.error(msg);
+            logStore.error("watcher", msg);
             return;
         }
         try (WatchService ws = FileSystems.getDefault().newWatchService()) {
@@ -69,6 +77,7 @@ public class WatcherService {
                         break;
                     }
                     if (Files.isRegularFile(file)) {
+                        logStore.info("watcher", "[Job " + job.id + "] Arquivo detectado: " + filename);
                         fileMoverService.moveFile(job, file, Path.of(job.destPath));
                     }
                 }
@@ -77,8 +86,10 @@ public class WatcherService {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (IOException e) {
-            log.error("[Job {}] Watcher error: {}", job.id, e.getMessage());
+            String msg = "[Job " + job.id + "] Erro no watcher: " + e.getMessage();
+            log.error(msg);
+            logStore.error("watcher", msg);
         }
-        log.info("[Job {}] Watcher exited", job.id);
+        log.info("[Job {}] Watcher encerrado", job.id);
     }
 }

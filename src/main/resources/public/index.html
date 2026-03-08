@@ -13,6 +13,12 @@
     .badge-ERROR { background-color: #dc3545; }
     td { vertical-align: middle; }
     .text-truncate-path { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .log-INFO  { color: #0d6efd; }
+    .log-WARN  { color: #fd7e14; }
+    .log-ERROR { color: #dc3545; font-weight: 600; }
+    #log-box { font-family: monospace; font-size: 0.8rem; max-height: 400px; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; border-radius: 6px; padding: 12px; }
+    #log-box .ts { color: #6a9955; margin-right: 6px; }
+    #log-box .src { color: #9cdcfe; margin-right: 6px; }
   </style>
 </head>
 <body>
@@ -113,6 +119,33 @@
   </div>
 
 </div>
+
+  <!-- Logs -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">Log do Sistema</span>
+      <div class="d-flex gap-2 align-items-center">
+        <select id="log-level-filter" class="form-select form-select-sm w-auto" onchange="loadLogs()">
+          <option value="">Todos os níveis</option>
+          <option value="INFO">INFO</option>
+          <option value="WARN">WARN</option>
+          <option value="ERROR">ERROR</option>
+        </select>
+        <select id="log-source-filter" class="form-select form-select-sm w-auto" onchange="loadLogs()">
+          <option value="">Todas as fontes</option>
+          <option value="watcher">watcher</option>
+          <option value="mover">mover</option>
+          <option value="sistema">sistema</option>
+        </select>
+        <button class="btn btn-outline-danger btn-sm" onclick="clearLogs()" title="Limpar logs">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+    <div class="card-body p-2">
+      <div id="log-box"><span class="text-muted">Aguardando eventos...</span></div>
+    </div>
+  </div>
 
 <!-- Job Modal -->
 <div class="modal fade" id="jobModal" tabindex="-1">
@@ -346,6 +379,33 @@
     pag.appendChild(mkLi('›', d.page + 1, d.page >= totalPages, false));
   }
 
+  // ── Logs ───────────────────────────────────────────────────────────────────
+  async function loadLogs() {
+    const level = document.getElementById('log-level-filter').value;
+    const source = document.getElementById('log-source-filter').value;
+    const params = new URLSearchParams({ limit: 200 });
+    if (level) params.set('level', level);
+    if (source) params.set('source', source);
+    try {
+      const entries = await fetch('/api/logs?' + params).then(r => r.json());
+      const box = document.getElementById('log-box');
+      if (!entries.length) {
+        box.innerHTML = '<span class="text-muted">Sem entradas no log</span>';
+        return;
+      }
+      box.innerHTML = entries.map(e => {
+        const lvlClass = 'log-' + e.level;
+        return `<div><span class="ts">${esc(e.timestamp)}</span><span class="src">[${esc(e.source)}]</span><span class="${lvlClass}">[${e.level}]</span> ${esc(e.message)}</div>`;
+      }).join('');
+    } catch (err) { console.error('Logs error', err); }
+  }
+
+  async function clearLogs() {
+    if (!confirm('Limpar todos os logs?')) return;
+    await fetch('/api/logs', { method: 'DELETE' });
+    loadLogs();
+  }
+
   // ── Toast ──────────────────────────────────────────────────────────────────
   function showToast(msg, type) {
     const el = document.createElement('div');
@@ -364,7 +424,7 @@
   // ── Init ───────────────────────────────────────────────────────────────────
   async function refresh() {
     await Promise.all([loadStats(), loadJobs()]);
-    await loadHistory(histPage);
+    await Promise.all([loadHistory(histPage), loadLogs()]);
   }
 
   refresh();

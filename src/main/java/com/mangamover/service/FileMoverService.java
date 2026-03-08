@@ -13,28 +13,35 @@ import java.util.stream.Stream;
 public class FileMoverService {
     private static final Logger log = LoggerFactory.getLogger(FileMoverService.class);
     private final HistoryService historyService;
+    private final LogStore logStore;
 
-    public FileMoverService(HistoryService historyService) {
+    public FileMoverService(HistoryService historyService, LogStore logStore) {
         this.historyService = historyService;
+        this.logStore = logStore;
     }
 
     public void moveAll(Job job) {
         Path source = Path.of(job.sourcePath);
         Path dest = Path.of(job.destPath);
         if (!Files.isDirectory(source)) {
-            log.warn("[Job {}] Source path not found: {}", job.id, source);
+            String msg = "[Job " + job.id + "] Pasta de origem não encontrada: " + source;
+            log.warn(msg);
+            logStore.warn("mover", msg);
             return;
         }
         try {
             Files.createDirectories(dest);
             try (Stream<Path> stream = Files.list(source)) {
                 List<Path> files = stream.filter(Files::isRegularFile).collect(Collectors.toList());
+                logStore.info("mover", "[Job " + job.id + "] Iniciando movimentação de " + files.size() + " arquivo(s)");
                 for (Path file : files) {
                     moveFile(job, file, dest);
                 }
             }
         } catch (IOException e) {
-            log.error("[Job {}] Error listing source: {}", job.id, e.getMessage());
+            String msg = "[Job " + job.id + "] Erro ao listar origem: " + e.getMessage();
+            log.error(msg);
+            logStore.error("mover", msg);
         }
     }
 
@@ -43,7 +50,9 @@ public class FileMoverService {
         try {
             Files.createDirectories(dest);
         } catch (IOException e) {
-            log.error("[Job {}] Cannot create dest dir: {}", job.id, e.getMessage());
+            String msg = "[Job " + job.id + "] Não foi possível criar pasta de destino: " + e.getMessage();
+            log.error(msg);
+            logStore.error("mover", msg);
             return;
         }
         Path target = resolveConflict(dest, filename);
@@ -54,10 +63,14 @@ public class FileMoverService {
                 Files.copy(file, target, StandardCopyOption.REPLACE_EXISTING);
                 Files.delete(file);
             }
-            log.info("[Job {}] Moved: {} -> {}", job.id, filename, target.getFileName());
+            String msg = "[Job " + job.id + "] Movido: " + filename + " → " + target.getFileName();
+            log.info(msg);
+            logStore.info("mover", msg);
             historyService.record(job.id, filename, "OK", null);
         } catch (Exception e) {
-            log.error("[Job {}] Failed to move {}: {}", job.id, filename, e.getMessage());
+            String msg = "[Job " + job.id + "] Falha ao mover " + filename + ": " + e.getMessage();
+            log.error(msg);
+            logStore.error("mover", msg);
             try {
                 historyService.record(job.id, filename, "ERROR", e.getMessage());
             } catch (Exception ignored) {}

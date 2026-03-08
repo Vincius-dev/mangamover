@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.mangamover.api.HistoryController;
 import com.mangamover.api.JobController;
+import com.mangamover.api.LogController;
 import com.mangamover.api.StatsController;
 import com.mangamover.config.AppConfig;
 import com.mangamover.db.Database;
@@ -11,6 +12,7 @@ import com.mangamover.model.Job;
 import com.mangamover.service.FileMoverService;
 import com.mangamover.service.HistoryService;
 import com.mangamover.service.JobService;
+import com.mangamover.service.LogStore;
 import com.mangamover.service.WatcherService;
 import io.javalin.Javalin;
 import io.javalin.json.JavalinJackson;
@@ -26,8 +28,9 @@ public class Main {
         Database db = new Database(AppConfig.DB_PATH);
         HistoryService historyService = new HistoryService(db);
         JobService jobService = new JobService(db);
-        FileMoverService fileMoverService = new FileMoverService(historyService);
-        WatcherService watcherService = new WatcherService(fileMoverService);
+        LogStore logStore = new LogStore();
+        FileMoverService fileMoverService = new FileMoverService(historyService, logStore);
+        WatcherService watcherService = new WatcherService(fileMoverService, logStore);
 
         ObjectMapper mapper = new ObjectMapper()
                 .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
@@ -40,6 +43,7 @@ public class Main {
         new JobController(jobService, watcherService, fileMoverService, mapper).register(app);
         new HistoryController(historyService).register(app);
         new StatsController(jobService, historyService, watcherService).register(app);
+        new LogController(logStore).register(app);
         app.get("/", ctx -> ctx.redirect("/index.html"));
 
         List<Job> jobs = jobService.findAll();
@@ -54,6 +58,7 @@ public class Main {
         }));
 
         app.start(AppConfig.PORT);
+        logStore.info("sistema", "MangaMover iniciado na porta " + AppConfig.PORT);
         log.info("MangaMover running on port {}", AppConfig.PORT);
     }
 }
