@@ -5,8 +5,10 @@ Aplicação Java para monitorar pastas e mover arquivos de manga automaticamente
 ## Funcionalidades
 
 - **Jobs configuráveis**: defina pares origem → destino com filtro de extensões (ex: `.cbz`, `.cbr`)
-- **Monitoramento automático**: detecta arquivos novos via Java NIO WatchService com threads virtuais (Java 21); move com delay de 1s para aguardar escrita completa
-- **Movimentação segura**: `Files.move(ATOMIC_MOVE)` com fallback copy+delete para volumes cruzados; conflitos resolvidos por sufixo (`arquivo_1.cbz`, `arquivo_2.cbz`...)
+- **Monitoramento automático**: detecta arquivos novos via Java NIO WatchService com threads virtuais (Java 21)
+- **Agendamento periódico**: execução programada por job (15min a 24h), independente do watcher
+- **Modo recursivo**: busca recursiva em subpastas com renomeação automática para formato Kavita (ex: `Chapter 7.cbz` → `Solo Leveling Ch.007.cbz`). Sobrescreve arquivos existentes no destino
+- **Proteção contra arquivos em uso**: arquivos read-only na origem são pulados automaticamente e processados na próxima execução
 - **Execução manual**: dispara um job imediatamente via UI ou API
 - **Histórico**: registro de cada arquivo movido com status OK/ERROR
 - **Interface web**: SPA com Bootstrap 5 — stats em tempo real (auto-refresh 30s), CRUD de jobs, histórico paginado com filtro
@@ -32,7 +34,7 @@ Aplicação Java para monitorar pastas e mover arquivos de manga automaticamente
 
 ```yaml
 volumes:
-  - /caminho/para/suwayomi/downloads:/manga/source:ro
+  - /caminho/para/suwayomi/downloads:/manga/source  # rw obrigatório (arquivos são apagados após mover)
   - /caminho/para/kavita/library:/manga/dest
 ```
 
@@ -74,6 +76,7 @@ Acesse `http://localhost:8765`.
 | PUT | `/api/jobs/{id}` | Atualiza job |
 | DELETE | `/api/jobs/{id}` | Remove job |
 | POST | `/api/jobs/{id}/run` | Executa job manualmente (async, 202) |
+| DELETE | `/api/logs` | Limpa todos os logs |
 | GET | `/api/history` | Histórico paginado (`?page&per_page&job_id`) |
 | GET | `/api/logs` | Log de eventos em tempo real |
 

@@ -18,7 +18,7 @@ public class JobService {
         synchronized (db) {
             List<Job> list = new ArrayList<>();
             try (PreparedStatement ps = db.getConnection().prepareStatement(
-                    "SELECT id, name, source_path, dest_path, watch, active, recursive, created_at FROM jobs ORDER BY id")) {
+                    "SELECT id, name, source_path, dest_path, watch, active, recursive, schedule_minutes, created_at FROM jobs ORDER BY id")) {
                 ResultSet rs = ps.executeQuery();
                 while (rs.next()) list.add(map(rs));
             }
@@ -29,7 +29,7 @@ public class JobService {
     public Job findById(long id) throws SQLException {
         synchronized (db) {
             try (PreparedStatement ps = db.getConnection().prepareStatement(
-                    "SELECT id, name, source_path, dest_path, watch, active, recursive, created_at FROM jobs WHERE id=?")) {
+                    "SELECT id, name, source_path, dest_path, watch, active, recursive, schedule_minutes, created_at FROM jobs WHERE id=?")) {
                 ps.setLong(1, id);
                 ResultSet rs = ps.executeQuery();
                 return rs.next() ? map(rs) : null;
@@ -40,7 +40,7 @@ public class JobService {
     public Job create(Job job) throws SQLException {
         synchronized (db) {
             try (PreparedStatement ps = db.getConnection().prepareStatement(
-                    "INSERT INTO jobs (name, source_path, dest_path, watch, active, recursive) VALUES (?,?,?,?,?,?)",
+                    "INSERT INTO jobs (name, source_path, dest_path, watch, active, recursive, schedule_minutes) VALUES (?,?,?,?,?,?,?)",
                     Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, job.name);
                 ps.setString(2, job.sourcePath);
@@ -48,6 +48,7 @@ public class JobService {
                 ps.setInt(4, job.watch ? 1 : 0);
                 ps.setInt(5, job.active ? 1 : 0);
                 ps.setInt(6, job.recursive ? 1 : 0);
+                ps.setInt(7, job.scheduleMinutes);
                 ps.executeUpdate();
                 ResultSet keys = ps.getGeneratedKeys();
                 if (keys.next()) job.id = keys.getLong(1);
@@ -59,14 +60,15 @@ public class JobService {
     public Job update(Job job) throws SQLException {
         synchronized (db) {
             try (PreparedStatement ps = db.getConnection().prepareStatement(
-                    "UPDATE jobs SET name=?, source_path=?, dest_path=?, watch=?, active=?, recursive=? WHERE id=?")) {
+                    "UPDATE jobs SET name=?, source_path=?, dest_path=?, watch=?, active=?, recursive=?, schedule_minutes=? WHERE id=?")) {
                 ps.setString(1, job.name);
                 ps.setString(2, job.sourcePath);
                 ps.setString(3, job.destPath);
                 ps.setInt(4, job.watch ? 1 : 0);
                 ps.setInt(5, job.active ? 1 : 0);
                 ps.setInt(6, job.recursive ? 1 : 0);
-                ps.setLong(7, job.id);
+                ps.setInt(7, job.scheduleMinutes);
+                ps.setLong(8, job.id);
                 ps.executeUpdate();
             }
             return findById(job.id);
@@ -91,6 +93,7 @@ public class JobService {
         j.watch = rs.getInt("watch") == 1;
         j.active = rs.getInt("active") == 1;
         j.recursive = rs.getInt("recursive") == 1;
+        j.scheduleMinutes = rs.getInt("schedule_minutes");
         j.createdAt = rs.getString("created_at");
         return j;
     }

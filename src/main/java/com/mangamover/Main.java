@@ -13,6 +13,7 @@ import com.mangamover.service.FileMoverService;
 import com.mangamover.service.HistoryService;
 import com.mangamover.service.JobService;
 import com.mangamover.service.LogStore;
+import com.mangamover.service.SchedulerService;
 import com.mangamover.service.WatcherService;
 import io.javalin.Javalin;
 import io.javalin.json.JavalinJackson;
@@ -31,6 +32,7 @@ public class Main {
         LogStore logStore = new LogStore();
         FileMoverService fileMoverService = new FileMoverService(historyService, logStore);
         WatcherService watcherService = new WatcherService(fileMoverService, logStore);
+        SchedulerService schedulerService = new SchedulerService(fileMoverService, logStore);
 
         ObjectMapper mapper = new ObjectMapper()
                 .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
@@ -40,7 +42,7 @@ public class Main {
             config.jsonMapper(new JavalinJackson(mapper, true));
         });
 
-        new JobController(jobService, watcherService, fileMoverService, mapper).register(app);
+        new JobController(jobService, watcherService, schedulerService, fileMoverService, mapper).register(app);
         new HistoryController(historyService).register(app);
         new StatsController(jobService, historyService, watcherService).register(app);
         new LogController(logStore).register(app);
@@ -49,10 +51,12 @@ public class Main {
         List<Job> jobs = jobService.findAll();
         for (Job job : jobs) {
             if (job.watch && job.active) watcherService.start(job);
+            if (job.scheduleMinutes > 0 && job.active) schedulerService.schedule(job);
         }
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             log.info("Shutting down...");
+            schedulerService.shutdown();
             watcherService.stopAll();
             app.stop();
         }));

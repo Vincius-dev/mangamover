@@ -288,6 +288,65 @@ class FileMoverServiceTest {
     }
 
     @Test
+    void moveFileRecursive_overwritesExistingFile() throws Exception {
+        Path source = tempDir.resolve("source");
+        Path dest = tempDir.resolve("dest");
+
+        Path seriesDir = source.resolve("MySeries");
+        Files.createDirectories(seriesDir);
+        Files.writeString(seriesDir.resolve("Chapter 1.cbz"), "novo conteudo");
+
+        // Pre-create destination file
+        Path destSeriesDir = dest.resolve("MySeries");
+        Files.createDirectories(destSeriesDir);
+        Files.writeString(destSeriesDir.resolve("MySeries Ch.001.cbz"), "conteudo antigo");
+
+        Job job = createJob(source, dest);
+        job.recursive = true;
+        fileMoverService.moveAll(job);
+
+        Path target = destSeriesDir.resolve("MySeries Ch.001.cbz");
+        assertTrue(Files.exists(target));
+        assertEquals("novo conteudo", Files.readString(target));
+        // Source should be deleted
+        assertFalse(Files.exists(seriesDir.resolve("Chapter 1.cbz")));
+        // No _1 file created
+        assertFalse(Files.exists(destSeriesDir.resolve("MySeries Ch.001_1.cbz")));
+    }
+
+    @Test
+    void moveFileRecursive_skipsReadOnlyFile() throws Exception {
+        Path source = tempDir.resolve("source");
+        Path dest = tempDir.resolve("dest");
+
+        Path seriesDir = source.resolve("MySeries");
+        Files.createDirectories(seriesDir);
+        Path readOnlyFile = seriesDir.resolve("Chapter 1.cbz");
+        Files.writeString(readOnlyFile, "content");
+        boolean changed = readOnlyFile.toFile().setWritable(false);
+        org.junit.jupiter.api.Assumptions.assumeTrue(changed && !readOnlyFile.toFile().canWrite(),
+                "Skipped: unable to remove write permission (may be running as root)");
+
+        try {
+            Job job = createJob(source, dest);
+            job.recursive = true;
+            fileMoverService.moveAll(job);
+
+            // File should still be in source (skipped)
+            assertTrue(Files.exists(readOnlyFile));
+            // Nothing in dest
+            assertFalse(Files.exists(dest.resolve("MySeries").resolve("MySeries Ch.001.cbz")));
+            // Should have a WARN log
+            List<com.mangamover.model.LogEntry> warns = logStore.get("WARN", null, 10);
+            assertTrue(warns.stream().anyMatch(e -> e.message.contains("read-only")));
+            // No history recorded
+            verify(historyService, never()).record(anyLong(), eq("Chapter 1.cbz"), anyString(), any());
+        } finally {
+            readOnlyFile.toFile().setWritable(true);
+        }
+    }
+
+    @Test
     void moveFile_recordsOkInHistory() throws Exception {
         Path source = tempDir.resolve("source");
         Path dest = tempDir.resolve("dest");

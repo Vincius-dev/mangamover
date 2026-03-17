@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mangamover.model.Job;
 import com.mangamover.service.FileMoverService;
 import com.mangamover.service.JobService;
+import com.mangamover.service.SchedulerService;
 import com.mangamover.service.WatcherService;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
@@ -15,13 +16,16 @@ import java.util.Map;
 public class JobController {
     private final JobService jobService;
     private final WatcherService watcherService;
+    private final SchedulerService schedulerService;
     private final FileMoverService fileMoverService;
     private final ObjectMapper mapper;
 
     public JobController(JobService jobService, WatcherService watcherService,
-                         FileMoverService fileMoverService, ObjectMapper mapper) {
+                         SchedulerService schedulerService, FileMoverService fileMoverService,
+                         ObjectMapper mapper) {
         this.jobService = jobService;
         this.watcherService = watcherService;
+        this.schedulerService = schedulerService;
         this.fileMoverService = fileMoverService;
         this.mapper = mapper;
     }
@@ -44,6 +48,7 @@ public class JobController {
         if (permError != null) { ctx.status(400).json(Map.of("error", permError)); return; }
         Job job = jobService.create(body);
         if (job.watch && job.active) watcherService.start(job);
+        if (job.scheduleMinutes > 0 && job.active) schedulerService.schedule(job);
         ctx.status(201).json(job);
     }
 
@@ -57,7 +62,9 @@ public class JobController {
         if (permError != null) { ctx.status(400).json(Map.of("error", permError)); return; }
         Job job = jobService.update(body);
         watcherService.stop(id);
+        schedulerService.unschedule(id);
         if (job.watch && job.active) watcherService.start(job);
+        if (job.scheduleMinutes > 0 && job.active) schedulerService.schedule(job);
         ctx.json(job);
     }
 
@@ -74,6 +81,7 @@ public class JobController {
     private void delete(Context ctx) throws Exception {
         long id = Long.parseLong(ctx.pathParam("id"));
         watcherService.stop(id);
+        schedulerService.unschedule(id);
         if (jobService.delete(id)) ctx.status(204);
         else ctx.status(404);
     }

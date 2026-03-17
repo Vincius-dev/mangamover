@@ -25,6 +25,11 @@ public class Database {
             } catch (SQLException ignored) {
                 // column already exists
             }
+            try {
+                st.execute("ALTER TABLE jobs ADD COLUMN schedule_minutes INTEGER NOT NULL DEFAULT 0");
+            } catch (SQLException ignored) {
+                // column already exists
+            }
             st.execute("""
                 CREATE TABLE IF NOT EXISTS history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

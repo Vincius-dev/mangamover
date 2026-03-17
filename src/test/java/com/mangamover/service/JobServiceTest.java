@@ -195,4 +195,33 @@ class JobServiceTest {
 
         assertTrue(updated.recursive);
     }
+
+    @Test
+    void create_scheduleMinutes_persistsCorrectly() throws SQLException {
+        Job j = newJob("Scheduled Job", "/s", "/d", true, true);
+        j.scheduleMinutes = 30;
+        Job created = jobService.create(j);
+        Job found = jobService.findById(created.id);
+
+        assertEquals(30, found.scheduleMinutes);
+    }
+
+    @Test
+    void create_scheduleMinutesZeroByDefault() throws SQLException {
+        Job created = jobService.create(newJob("Job", "/s", "/d", true, true));
+        Job found = jobService.findById(created.id);
+
+        assertEquals(0, found.scheduleMinutes);
+    }
+
+    @Test
+    void update_changesScheduleMinutes() throws SQLException {
+        Job created = jobService.create(newJob("Job", "/s", "/d", true, true));
+        assertEquals(0, created.scheduleMinutes);
+
+        created.scheduleMinutes = 60;
+        Job updated = jobService.update(created);
+
+        assertEquals(60, updated.scheduleMinutes);
+    }
 }

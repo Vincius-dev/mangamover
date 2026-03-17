@@ -72,6 +72,12 @@ public class FileMoverService {
 
     public void moveFileRecursive(Job job, Path file, Path destBase, String seriesName) {
         String filename = file.getFileName().toString();
+        if (!Files.isWritable(file)) {
+            String msg = "[Job " + job.id + "] Arquivo em uso/read-only, pulando: " + filename;
+            log.warn(msg);
+            logStore.warn("mover", msg);
+            return;
+        }
         String targetFilename = ChapterParser.rename(seriesName, filename).orElse(filename);
         Path seriesDir = destBase.resolve(seriesName);
         try {
@@ -82,14 +88,9 @@ public class FileMoverService {
             logStore.error("mover", msg);
             return;
         }
-        Path target = resolveConflict(seriesDir, targetFilename);
+        Path target = seriesDir.resolve(targetFilename);
         try {
-            try {
-                Files.move(file, target, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {
-                Files.copy(file, target, StandardCopyOption.REPLACE_EXISTING);
-                Files.delete(file);
-            }
+            transferFile(file, target);
             String msg = "[Job " + job.id + "] Movido: " + filename + " → " + seriesName + "/" + target.getFileName();
             log.info(msg);
             logStore.info("mover", msg);
@@ -106,6 +107,12 @@ public class FileMoverService {
 
     public void moveFile(Job job, Path file, Path dest) {
         String filename = file.getFileName().toString();
+        if (!Files.isWritable(file)) {
+            String msg = "[Job " + job.id + "] Arquivo em uso/read-only, pulando: " + filename;
+            log.warn(msg);
+            logStore.warn("mover", msg);
+            return;
+        }
         try {
             Files.createDirectories(dest);
         } catch (IOException e) {
@@ -116,12 +123,7 @@ public class FileMoverService {
         }
         Path target = resolveConflict(dest, filename);
         try {
-            try {
-                Files.move(file, target, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {
-                Files.copy(file, target, StandardCopyOption.REPLACE_EXISTING);
-                Files.delete(file);
-            }
+            transferFile(file, target);
             String msg = "[Job " + job.id + "] Movido: " + filename + " → " + target.getFileName();
             log.info(msg);
             logStore.info("mover", msg);
@@ -134,6 +136,17 @@ public class FileMoverService {
                 historyService.record(job.id, filename, "ERROR", e.getMessage());
             } catch (Exception ignored) {}
         }
+    }
+
+    private void transferFile(Path source, Path target) throws IOException {
+        try {
+            Files.move(source, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            return;
+        } catch (AtomicMoveNotSupportedException e) {
+            // fall through to copy+delete
+        }
+        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+        Files.delete(source);
     }
 
     private Path resolveConflict(Path dest, String filename) {

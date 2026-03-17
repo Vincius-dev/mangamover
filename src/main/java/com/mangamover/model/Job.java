@@ -8,5 +8,6 @@ public class Job {
     public boolean watch;
     public boolean active;
     public boolean recursive;
+    public int scheduleMinutes;
     public String createdAt;
 }

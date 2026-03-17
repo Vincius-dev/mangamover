@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mangamover.model.Job;
 import com.mangamover.service.FileMoverService;
 import com.mangamover.service.JobService;
+import com.mangamover.service.SchedulerService;
 import com.mangamover.service.WatcherService;
 import io.javalin.http.Context;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,7 @@ class JobControllerTest {
 
     private JobService jobService;
     private WatcherService watcherService;
+    private SchedulerService schedulerService;
     private FileMoverService fileMoverService;
     private ObjectMapper mapper;
     private JobController controller;
@@ -35,9 +37,10 @@ class JobControllerTest {
     void setUp() {
         jobService = mock(JobService.class);
         watcherService = mock(WatcherService.class);
+        schedulerService = mock(SchedulerService.class);
         fileMoverService = mock(FileMoverService.class);
         mapper = new ObjectMapper();
-        controller = new JobController(jobService, watcherService, fileMoverService, mapper);
+        controller = new JobController(jobService, watcherService, schedulerService, fileMoverService, mapper);
     }
 
     private Context mockCtx() {

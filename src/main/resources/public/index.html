@@ -74,12 +74,13 @@
               <th>Watch</th>
               <th>Recursivo</th>
               <th>Ativo</th>
+              <th>Agendamento</th>
               <th>Watcher</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody id="jobs-body">
-            <tr><td colspan="9" class="text-center text-muted py-3">Carregando...</td></tr>
+            <tr><td colspan="10" class="text-center text-muted py-3">Carregando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -179,10 +180,24 @@
             <input type="checkbox" class="form-check-input" id="job-active" checked>
             <label class="form-check-label" for="job-active">Ativo</label>
           </div>
-          <div class="form-check">
+          <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input" id="job-recursive">
             <label class="form-check-label" for="job-recursive">Modo recursivo (Suwayomi → Kavita)</label>
             <div class="form-text">Busca arquivos em subpastas e renomeia para o formato Kavita</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Agendar execução</label>
+            <select class="form-select" id="job-schedule">
+              <option value="0">Desabilitado</option>
+              <option value="15">A cada 15 minutos</option>
+              <option value="30">A cada 30 minutos</option>
+              <option value="60">A cada 1 hora</option>
+              <option value="120">A cada 2 horas</option>
+              <option value="360">A cada 6 horas</option>
+              <option value="720">A cada 12 horas</option>
+              <option value="1440">A cada 24 horas</option>
+            </select>
+            <div class="form-text">Executa o job periodicamente (independente do watcher)</div>
           </div>
           <div id="modal-error" class="alert alert-danger mt-3 d-none"></div>
         </form>
@@ -226,7 +241,7 @@
   function renderJobs(jobs) {
     const tbody = document.getElementById('jobs-body');
     if (!jobs.length) {
-      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-3">Nenhum job cadastrado</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-3">Nenhum job cadastrado</td></tr>';
       return;
     }
     tbody.innerHTML = jobs.map(j => `
@@ -238,6 +253,7 @@
         <td>${j.watch ? '<i class="bi bi-eye text-primary"></i>' : '<i class="bi bi-eye-slash text-muted"></i>'}</td>
         <td>${j.recursive ? '<span class="badge bg-info">Sim</span>' : '<span class="badge bg-secondary">Não</span>'}</td>
         <td>${j.active ? '<span class="badge bg-success">Sim</span>' : '<span class="badge bg-secondary">Não</span>'}</td>
+        <td>${formatSchedule(j.schedule_minutes)}</td>
         <td id="watcher-${j.id}"><span class="badge bg-secondary">—</span></td>
         <td>
           <button class="btn btn-outline-secondary btn-sm me-1" onclick="openModal(${j.id})" title="Editar">
@@ -279,6 +295,7 @@
       document.getElementById('job-watch').checked = j.watch;
       document.getElementById('job-active').checked = j.active;
       document.getElementById('job-recursive').checked = j.recursive;
+      document.getElementById('job-schedule').value = j.schedule_minutes || 0;
     }
     modal.show();
   }
@@ -292,6 +309,7 @@
       watch: document.getElementById('job-watch').checked,
       active: document.getElementById('job-active').checked,
       recursive: document.getElementById('job-recursive').checked,
+      schedule_minutes: parseInt(document.getElementById('job-schedule').value) || 0,
     };
     if (!body.name || !body.source_path || !body.dest_path) return;
 
@@ -423,6 +441,13 @@
     el.textContent = msg;
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 3000);
+  }
+
+  function formatSchedule(minutes) {
+    if (!minutes || minutes <= 0) return '<span class="text-muted">—</span>';
+    if (minutes < 60) return `<span class="badge bg-primary">${minutes}min</span>`;
+    const h = minutes / 60;
+    return `<span class="badge bg-primary">${h}h</span>`;
   }
 
   function esc(s) {
