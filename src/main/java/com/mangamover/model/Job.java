@@ -7,5 +7,6 @@ public class Job {
     public String destPath;
     public boolean watch;
     public boolean active;
+    public boolean recursive;
     public String createdAt;
 }

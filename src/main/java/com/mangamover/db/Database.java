@@ -20,6 +20,11 @@ public class Database {
                     created_at TEXT NOT NULL DEFAULT (datetime('now'))
                 )
             """);
+            try {
+                st.execute("ALTER TABLE jobs ADD COLUMN recursive INTEGER NOT NULL DEFAULT 0");
+            } catch (SQLException ignored) {
+                // column already exists
+            }
             st.execute("""
                 CREATE TABLE IF NOT EXISTS history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

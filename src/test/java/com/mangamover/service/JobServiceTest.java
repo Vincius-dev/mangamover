@@ -28,12 +28,17 @@ class JobServiceTest {
     }
 
     private Job newJob(String name, String src, String dest, boolean watch, boolean active) {
+        return newJob(name, src, dest, watch, active, false);
+    }
+
+    private Job newJob(String name, String src, String dest, boolean watch, boolean active, boolean recursive) {
         Job j = new Job();
         j.name = name;
         j.sourcePath = src;
         j.destPath = dest;
         j.watch = watch;
         j.active = active;
+        j.recursive = recursive;
         return j;
     }
 
@@ -164,5 +169,30 @@ class JobServiceTest {
 
         assertFalse(found.watch);
         assertFalse(found.active);
+    }
+
+    @Test
+    void create_recursiveTrue_persistsCorrectly() throws SQLException {
+        Job created = jobService.create(newJob("Recursive Job", "/s", "/d", true, true, true));
+        Job found = jobService.findById(created.id);
+
+        assertTrue(found.recursive);
+    }
+
+    @Test
+    void create_recursiveFalseByDefault() throws SQLException {
+        Job created = jobService.create(newJob("Job", "/s", "/d", true, true));
+        Job found = jobService.findById(created.id);
+
+        assertFalse(found.recursive);
+    }
+
+    @Test
+    void update_changesRecursiveField() throws SQLException {
+        Job created = jobService.create(newJob("Job", "/s", "/d", true, true, false));
+        created.recursive = true;
+        Job updated = jobService.update(created);
+
+        assertTrue(updated.recursive);
     }
 }

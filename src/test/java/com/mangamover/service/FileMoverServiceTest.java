@@ -184,6 +184,96 @@ class FileMoverServiceTest {
     }
 
     @Test
+    void moveAll_recursive_movesSuwayomiStructureToKavita() throws Exception {
+        Path source = tempDir.resolve("source");
+        Path dest = tempDir.resolve("dest");
+
+        // Suwayomi structure: source/AllManga (EN)/Solo Leveling/Chapter 7.cbz
+        Path seriesDir = source.resolve("AllManga (EN)").resolve("Solo Leveling");
+        Files.createDirectories(seriesDir);
+        Files.writeString(seriesDir.resolve("Chapter 7.cbz"), "content");
+        Files.writeString(seriesDir.resolve("Chapter 72.cbz"), "content2");
+
+        Job job = createJob(source, dest);
+        job.recursive = true;
+        fileMoverService.moveAll(job);
+
+        // Should end up as dest/Solo Leveling/Solo Leveling Ch.007.cbz
+        assertTrue(Files.exists(dest.resolve("Solo Leveling").resolve("Solo Leveling Ch.007.cbz")));
+        assertTrue(Files.exists(dest.resolve("Solo Leveling").resolve("Solo Leveling Ch.072.cbz")));
+    }
+
+    @Test
+    void moveAll_recursive_nonChapterFile_keepsOriginalName() throws Exception {
+        Path source = tempDir.resolve("source");
+        Path dest = tempDir.resolve("dest");
+
+        Path seriesDir = source.resolve("MySeries");
+        Files.createDirectories(seriesDir);
+        Files.writeString(seriesDir.resolve("random_file.cbz"), "content");
+
+        Job job = createJob(source, dest);
+        job.recursive = true;
+        fileMoverService.moveAll(job);
+
+        // Non-matching filename keeps original name under series folder
+        assertTrue(Files.exists(dest.resolve("MySeries").resolve("random_file.cbz")));
+    }
+
+    @Test
+    void moveAll_recursive_multipleSeriesDirs() throws Exception {
+        Path source = tempDir.resolve("source");
+        Path dest = tempDir.resolve("dest");
+
+        Path series1 = source.resolve("src1").resolve("Series A");
+        Path series2 = source.resolve("src2").resolve("Series B");
+        Files.createDirectories(series1);
+        Files.createDirectories(series2);
+        Files.writeString(series1.resolve("Chapter 1.cbz"), "a");
+        Files.writeString(series2.resolve("Chapter 2.cbr"), "b");
+
+        Job job = createJob(source, dest);
+        job.recursive = true;
+        fileMoverService.moveAll(job);
+
+        assertTrue(Files.exists(dest.resolve("Series A").resolve("Series A Ch.001.cbz")));
+        assertTrue(Files.exists(dest.resolve("Series B").resolve("Series B Ch.002.cbr")));
+    }
+
+    @Test
+    void moveAll_recursive_ignoresNonCbzCbrFiles() throws Exception {
+        Path source = tempDir.resolve("source");
+        Path dest = tempDir.resolve("dest");
+
+        Path seriesDir = source.resolve("Series");
+        Files.createDirectories(seriesDir);
+        Files.writeString(seriesDir.resolve("Chapter 1.cbz"), "content");
+        Files.writeString(seriesDir.resolve("readme.txt"), "text");
+
+        Job job = createJob(source, dest);
+        job.recursive = true;
+        fileMoverService.moveAll(job);
+
+        assertTrue(Files.exists(dest.resolve("Series").resolve("Series Ch.001.cbz")));
+        // txt file should not be moved
+        assertTrue(Files.exists(seriesDir.resolve("readme.txt")));
+    }
+
+    @Test
+    void moveAll_nonRecursive_behavesAsFlat() throws Exception {
+        Path source = tempDir.resolve("source");
+        Path dest = tempDir.resolve("dest");
+        Files.createDirectories(source);
+        Files.writeString(source.resolve("manga1.cbz"), "c1");
+
+        Job job = createJob(source, dest);
+        job.recursive = false;
+        fileMoverService.moveAll(job);
+
+        assertTrue(Files.exists(dest.resolve("manga1.cbz")));
+    }
+
+    @Test
     void moveFile_createsDestDirIfNotExists() throws Exception {
         Path source = tempDir.resolve("source");
         Path dest = tempDir.resolve("destino_novo");

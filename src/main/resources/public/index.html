@@ -72,13 +72,14 @@
               <th>Origem</th>
               <th>Destino</th>
               <th>Watch</th>
+              <th>Recursivo</th>
               <th>Ativo</th>
               <th>Watcher</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody id="jobs-body">
-            <tr><td colspan="8" class="text-center text-muted py-3">Carregando...</td></tr>
+            <tr><td colspan="9" class="text-center text-muted py-3">Carregando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -174,9 +175,14 @@
             <input type="checkbox" class="form-check-input" id="job-watch" checked>
             <label class="form-check-label" for="job-watch">Monitorar automaticamente (WatchService)</label>
           </div>
-          <div class="form-check">
+          <div class="form-check mb-2">
             <input type="checkbox" class="form-check-input" id="job-active" checked>
             <label class="form-check-label" for="job-active">Ativo</label>
+          </div>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="job-recursive">
+            <label class="form-check-label" for="job-recursive">Modo recursivo (Suwayomi → Kavita)</label>
+            <div class="form-text">Busca arquivos em subpastas e renomeia para o formato Kavita</div>
           </div>
           <div id="modal-error" class="alert alert-danger mt-3 d-none"></div>
         </form>
@@ -220,7 +226,7 @@
   function renderJobs(jobs) {
     const tbody = document.getElementById('jobs-body');
     if (!jobs.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">Nenhum job cadastrado</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-3">Nenhum job cadastrado</td></tr>';
       return;
     }
     tbody.innerHTML = jobs.map(j => `
@@ -230,6 +236,7 @@
         <td><span class="text-truncate-path d-inline-block" title="${esc(j.source_path)}">${esc(j.source_path)}</span></td>
         <td><span class="text-truncate-path d-inline-block" title="${esc(j.dest_path)}">${esc(j.dest_path)}</span></td>
         <td>${j.watch ? '<i class="bi bi-eye text-primary"></i>' : '<i class="bi bi-eye-slash text-muted"></i>'}</td>
+        <td>${j.recursive ? '<span class="badge bg-info">Sim</span>' : '<span class="badge bg-secondary">Não</span>'}</td>
         <td>${j.active ? '<span class="badge bg-success">Sim</span>' : '<span class="badge bg-secondary">Não</span>'}</td>
         <td id="watcher-${j.id}"><span class="badge bg-secondary">—</span></td>
         <td>
@@ -271,6 +278,7 @@
       document.getElementById('job-dest').value = j.dest_path;
       document.getElementById('job-watch').checked = j.watch;
       document.getElementById('job-active').checked = j.active;
+      document.getElementById('job-recursive').checked = j.recursive;
     }
     modal.show();
   }
@@ -283,6 +291,7 @@
       dest_path: document.getElementById('job-dest').value.trim(),
       watch: document.getElementById('job-watch').checked,
       active: document.getElementById('job-active').checked,
+      recursive: document.getElementById('job-recursive').checked,
     };
     if (!body.name || !body.source_path || !body.dest_path) return;
 

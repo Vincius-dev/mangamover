@@ -190,6 +190,44 @@ class WatcherServiceTest {
     }
 
     @Test
+    void watchThread_recursive_detectsFileInSubdir() throws Exception {
+        Path source = tempDir.resolve("watched_recursive");
+        Path seriesDir = source.resolve("Solo Leveling");
+        Path dest = tempDir.resolve("dest_recursive");
+        Files.createDirectories(seriesDir);
+
+        Job job = createJob(50L, source, dest);
+        job.recursive = true;
+        watcherService.start(job);
+        Thread.sleep(300);
+
+        Files.writeString(seriesDir.resolve("Chapter 7.cbz"), "content");
+        Thread.sleep(2000);
+
+        verify(fileMoverService).moveFileRecursive(any(Job.class), any(Path.class), eq(dest), eq("Solo Leveling"));
+        watcherService.stop(50L);
+    }
+
+    @Test
+    void watchThread_nonRecursive_doesNotCallMoveFileRecursive() throws Exception {
+        Path source = tempDir.resolve("watched_flat");
+        Path dest = tempDir.resolve("dest_flat");
+        Files.createDirectories(source);
+
+        Job job = createJob(60L, source, dest);
+        job.recursive = false;
+        watcherService.start(job);
+        Thread.sleep(150);
+
+        Files.writeString(source.resolve("manga.cbz"), "content");
+        Thread.sleep(1500);
+
+        verify(fileMoverService).moveFile(any(Job.class), any(Path.class), eq(dest));
+        verify(fileMoverService, never()).moveFileRecursive(any(), any(), any(), any());
+        watcherService.stop(60L);
+    }
+
+    @Test
     void watchThread_nonRegularFileEvent_doesNotCallMoveFile() throws Exception {
         Path source = tempDir.resolve("watched_dir");
         Files.createDirectories(source);
