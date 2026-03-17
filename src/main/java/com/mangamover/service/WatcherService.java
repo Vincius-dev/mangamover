@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.*;
+import java.nio.file.DirectoryStream;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -134,6 +135,8 @@ public class WatcherService {
 
                     if (Files.isDirectory(child)) {
                         registerTree(ws, child, keyDirMap);
+                        // Scan existing files — they may have been created before the watch was registered
+                        scanExistingFiles(job, child, dest);
                     } else if (Files.isRegularFile(child) && CBZ_CBR.matcher(child.getFileName().toString()).matches()) {
                         String seriesName = child.getParent().getFileName().toString();
                         logStore.info("watcher", "[Job " + job.id + "] Arquivo detectado (recursivo): " + seriesName + "/" + child.getFileName());
@@ -152,6 +155,20 @@ public class WatcherService {
             logStore.error("watcher", msg);
         }
         log.info("[Job {}] Watcher recursivo encerrado", job.id);
+    }
+
+    private void scanExistingFiles(Job job, Path dir, Path dest) {
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
+            for (Path file : stream) {
+                if (Files.isRegularFile(file) && CBZ_CBR.matcher(file.getFileName().toString()).matches()) {
+                    String seriesName = file.getParent().getFileName().toString();
+                    logStore.info("watcher", "[Job " + job.id + "] Arquivo existente detectado: " + seriesName + "/" + file.getFileName());
+                    fileMoverService.moveFileRecursive(job, file, dest, seriesName);
+                }
+            }
+        } catch (IOException e) {
+            log.warn("[Job {}] Erro ao scanear diretório {}: {}", job.id, dir, e.getMessage());
+        }
     }
 
     private void registerTree(WatchService ws, Path root, Map<WatchKey, Path> keyDirMap) throws IOException {

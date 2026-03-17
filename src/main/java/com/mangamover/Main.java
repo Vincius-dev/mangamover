@@ -50,8 +50,16 @@ public class Main {
 
         List<Job> jobs = jobService.findAll();
         for (Job job : jobs) {
-            if (job.watch && job.active) watcherService.start(job);
-            if (job.scheduleMinutes > 0 && job.active) schedulerService.schedule(job);
+            if (job.active) {
+                // Initial scan: process files that already exist before watchers start
+                try {
+                    fileMoverService.moveAll(job);
+                } catch (Exception e) {
+                    log.error("[Job {}] Erro no scan inicial: {}", job.id, e.getMessage());
+                }
+                if (job.watch) watcherService.start(job);
+                if (job.scheduleMinutes > 0) schedulerService.schedule(job);
+            }
         }
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
